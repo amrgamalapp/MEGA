@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>قائمة انتظار التركيبات - شركة النت</title>
+  <title>قائمة انتظار التركيبات - MEGA NET</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-database-compat.js"></script>
   <style>
     body { font-family: 'Cairo', sans-serif; }
     .fade-in { animation: fadeIn 0.3s ease-in; }
@@ -247,12 +250,27 @@
   </div>
 
   <script>
+    // ========== إعدادات Firebase ==========
+    const firebaseConfig = {
+      apiKey: "AIzaSyDbqn0J1RixrUWUAP1oBqVW1BbFQYS2KtY",
+      authDomain: "mega-d5d82.firebaseapp.com",
+      databaseURL: "https://mega-d5d82-default-rtdb.firebaseio.com",
+      projectId: "mega-d5d82",
+      storageBucket: "mega-d5d82.firebasestorage.app",
+      messagingSenderId: "1084952179013",
+      appId: "1:1084952179013:web:e7066d45ccb4f9a76f4e2c",
+      measurementId: "G-VM10GP67Z3"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const waitingListRef = db.ref("waitingList");
+
     // ========== الإعدادات ==========
     const PASSWORD = "mega";           // غيّر كلمة المرور من هنا
-    const STORAGE_KEY = "net_waiting_list";
 
     // ========== البيانات ==========
-    let entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    let entries = [];
 
     // ========== تسجيل الدخول ==========
     function login() {
@@ -261,8 +279,7 @@
         document.getElementById("loginScreen").classList.add("hidden");
         document.getElementById("app").classList.remove("hidden");
         document.getElementById("loginError").classList.add("hidden");
-        renderTable();
-        updateStats();
+        startListening();
       } else {
         document.getElementById("loginError").classList.remove("hidden");
       }
@@ -272,6 +289,20 @@
       document.getElementById("app").classList.add("hidden");
       document.getElementById("loginScreen").classList.remove("hidden");
       document.getElementById("passwordInput").value = "";
+      waitingListRef.off(); // إيقاف الاستماع
+    }
+
+    // ========== الاستماع للبيانات في الوقت الحقيقي ==========
+    function startListening() {
+      waitingListRef.on("value", (snapshot) => {
+        const data = snapshot.val() || {};
+        entries = Object.keys(data).map(key => ({
+          id: key,
+          ...data[key]
+        })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        renderTable();
+        updateStats();
+      });
     }
 
     // ========== حفظ / تعديل ==========
@@ -279,8 +310,14 @@
       e.preventDefault();
       const id = document.getElementById("editId").value;
       const contactedBy = document.getElementById("contactedBy").value;
+      
+      let status = id ? (entries.find(x => x.id === id)?.status || "waiting") : "waiting";
+      // لو اختار حد تواصل، نغير الحالة تلقائي لـ "تم التواصل" لو كانت انتظار
+      if (contactedBy && status === "waiting") {
+        status = "contacted";
+      }
+
       const data = {
-        id: id || Date.now().toString(),
         name: document.getElementById("name").value.trim(),
         phone: document.getElementById("phone").value.trim(),
         area: document.getElementById("area").value,
@@ -288,26 +325,19 @@
         package: document.getElementById("package").value,
         notes: document.getElementById("notes").value.trim(),
         contactedBy: contactedBy,
-        status: id ? (entries.find(x => x.id === id)?.status || "waiting") : "waiting",
+        status: status,
         createdAt: id ? (entries.find(x => x.id === id)?.createdAt || new Date().toISOString()) : new Date().toISOString()
       };
 
-      // لو اختار حد تواصل، نغير الحالة تلقائي لـ "تم التواصل" لو كانت انتظار
-      if (contactedBy && data.status === "waiting") {
-        data.status = "contacted";
-      }
-
       if (id) {
-        const idx = entries.findIndex(x => x.id === id);
-        if (idx !== -1) entries[idx] = data;
+        // تعديل
+        waitingListRef.child(id).update(data);
       } else {
-        entries.unshift(data);
+        // إضافة جديدة
+        waitingListRef.push(data);
       }
 
-      saveToStorage();
       resetForm();
-      renderTable();
-      updateStats();
     }
 
     function resetForm() {
@@ -403,13 +433,7 @@
 
     // ========== تغيير الحالة ==========
     function changeStatus(id, status) {
-      const entry = entries.find(e => e.id === id);
-      if (entry) {
-        entry.status = status;
-        saveToStorage();
-        updateStats();
-        renderTable();
-      }
+      waitingListRef.child(id).update({ status: status });
     }
 
     // ========== تعديل ==========
@@ -432,10 +456,7 @@
     // ========== حذف ==========
     function deleteEntry(id) {
       if (!confirm("هل أنت متأكد من حذف هذا الطلب؟")) return;
-      entries = entries.filter(e => e.id !== id);
-      saveToStorage();
-      renderTable();
-      updateStats();
+      waitingListRef.child(id).remove();
     }
 
     // ========== التفاصيل ==========
@@ -516,10 +537,6 @@
     }
 
     // ========== أدوات مساعدة ==========
-    function saveToStorage() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-    }
-
     function formatDate(iso) {
       const d = new Date(iso);
       return d.toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" });
