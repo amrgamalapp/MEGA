@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>قائمة انتظار التركيبات - شركة النت</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Cairo', sans-serif; }
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+  <!-- شاشة الدخول -->
+  <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-slate-800">قائمة انتظار التركيبات</h1>
+        <p class="text-slate-500 mt-1">الدعم الفني فقط</p>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">كلمة المرور</label>
+          <input type="password" id="passwordInput" placeholder="أدخل كلمة المرور"
+                 class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                 onkeydown="if(event.key==='Enter') login()">
+        </div>
+        <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition">
+          دخول
+        </button>
+        <p id="loginError" class="text-red-500 text-sm text-center hidden">كلمة المرور غير صحيحة</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- التطبيق الرئيسي -->
+  <div id="app" class="hidden">
+    <!-- الهيدر -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-20">
+      <div class="max-w-7xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <h1 class="font-bold text-slate-800 text-base sm:text-lg truncate">قائمة انتظار التركيبات</h1>
+            <p class="text-xs text-slate-500 hidden sm:block">تسجيل العملاء الجدد</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <button onclick="exportCSV()" class="px-2.5 sm:px-3 py-2 text-xs sm:text-sm bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg font-medium transition flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <span class="hidden sm:inline">تصدير إكسل</span>
+          </button>
+          <button onclick="logout()" class="px-2.5 sm:px-3 py-2 text-xs sm:text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition">خروج</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+      <!-- الإحصائيات -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
+        <div class="bg-white rounded-xl p-4 border border-slate-200">
+          <p class="text-sm text-slate-500">إجمالي الطلبات</p>
+          <p class="text-2xl font-bold text-slate-800" id="statTotal">0</p>
+        </div>
+        <div class="bg-white rounded-xl p-4 border border-slate-200">
+          <p class="text-sm text-slate-500">في الانتظار</p>
+          <p class="text-2xl font-bold text-amber-600" id="statWaiting">0</p>
+        </div>
+        <div class="bg-white rounded-xl p-4 border border-slate-200">
+          <p class="text-sm text-slate-500">تم التواصل</p>
+          <p class="text-2xl font-bold text-blue-600" id="statContacted">0</p>
+        </div>
+        <div class="bg-white rounded-xl p-4 border border-slate-200">
+          <p class="text-sm text-slate-500">تم التركيب</p>
+          <p class="text-2xl font-bold text-emerald-600" id="statInstalled">0</p>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-3 gap-6">
+        <!-- فورم الإضافة -->
+        <div class="lg:col-span-1">
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 sticky top-20">
+            <h2 class="font-bold text-lg text-slate-800 mb-4" id="formTitle">إضافة عميل جديد</h2>
+            <form id="entryForm" class="space-y-4" onsubmit="saveEntry(event)">
+              <input type="hidden" id="editId">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">الاسم الكامل *</label>
+                <input type="text" id="name" required placeholder="مثال: أحمد محمد"
+                       class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">رقم التليفون *</label>
+                <input type="tel" id="phone" required placeholder="01xxxxxxxxx"
+                       class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">المنطقة *</label>
+                <select id="area" required class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white">
+                  <option value="">اختر المنطقة</option>
+                  <option value="غرب المطار قطاع أ">غرب المطار قطاع أ</option>
+                  <option value="غرب المطار قطاع ب">غرب المطار قطاع ب</option>
+                  <option value="800 فدان">800 فدان</option>
+                  <option value="دجلة">دجلة</option>
+                  <option value="أخرى">أخرى</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">العنوان التفصيلي *</label>
+                <textarea id="address" required rows="2" placeholder="الشارع، العمارة، الشقة..."
+                          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">الباقة المختارة *</label>
+                <select id="package" required class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white text-sm">
+                  <option value="">اختر الباقة</option>
+                  <optgroup label="── سرعة 2 ميجا ──">
+                    <option value="2 ميجا - 50 جيجا (175 جنيه)">2 ميجا - 50 جيجا (175 جنيه)</option>
+                    <option value="2 ميجا - 70 جيجا (230 جنيه)">2 ميجا - 70 جيجا (230 جنيه)</option>
+                    <option value="2 ميجا - 85 جيجا (280 جنيه)">2 ميجا - 85 جيجا (280 جنيه)</option>
+                    <option value="2 ميجا - 100 جيجا (320 جنيه)">2 ميجا - 100 جيجا (320 جنيه)</option>
+                    <option value="2 ميجا - 120 جيجا (375 جنيه)">2 ميجا - 120 جيجا (375 جنيه)</option>
+                  </optgroup>
+                  <optgroup label="── سرعة 4 ميجا ──">
+                    <option value="4 ميجا - 125 جيجا (400 جنيه)">4 ميجا - 125 جيجا (400 جنيه)</option>
+                    <option value="4 ميجا - 175 جيجا (550 جنيه)">4 ميجا - 175 جيجا (550 جنيه)</option>
+                    <option value="4 ميجا - 200 جيجا (620 جنيه)">4 ميجا - 200 جيجا (620 جنيه)</option>
+                    <option value="4 ميجا - 250 جيجا (700 جنيه)">4 ميجا - 250 جيجا (700 جنيه)</option>
+                    <option value="4 ميجا - 300 جيجا (825 جنيه)">4 ميجا - 300 جيجا (825 جنيه)</option>
+                  </optgroup>
+                  <optgroup label="── سرعة 5 ميجا ──">
+                    <option value="5 ميجا - 40 جيجا (175 جنيه)">5 ميجا - 40 جيجا (175 جنيه)</option>
+                    <option value="5 ميجا - 60 جيجا (235 جنيه)">5 ميجا - 60 جيجا (235 جنيه)</option>
+                    <option value="5 ميجا - 100 جيجا (325 جنيه)">5 ميجا - 100 جيجا (325 جنيه)</option>
+                    <option value="5 ميجا - 125 جيجا (425 جنيه)">5 ميجا - 125 جيجا (425 جنيه)</option>
+                    <option value="5 ميجا - 210 جيجا (650 جنيه)">5 ميجا - 210 جيجا (650 جنيه)</option>
+                  </optgroup>
+                  <optgroup label="── سرعة 8 ميجا ──">
+                    <option value="8 ميجا - 100 جيجا (375 جنيه)">8 ميجا - 100 جيجا (375 جنيه)</option>
+                    <option value="8 ميجا - 140 جيجا (450 جنيه)">8 ميجا - 140 جيجا (450 جنيه)</option>
+                    <option value="8 ميجا - 210 جيجا (680 جنيه)">8 ميجا - 210 جيجا (680 جنيه)</option>
+                    <option value="8 ميجا - 250 جيجا (740 جنيه)">8 ميجا - 250 جيجا (740 جنيه)</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">ملاحظات</label>
+                <textarea id="notes" rows="2" placeholder="أي ملاحظات إضافية..."
+                          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">مين اللي تواصل مع العميل</label>
+                <select id="contactedBy" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white">
+                  <option value="">لم يتم التواصل بعد</option>
+                  <option value="أ شروق">أ شروق</option>
+                  <option value="أ سارة">أ سارة</option>
+                </select>
+              </div>
+              <div class="flex gap-2 pt-1">
+                <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl transition">
+                  حفظ
+                </button>
+                <button type="button" id="cancelEditBtn" onclick="cancelEdit()" class="hidden px-4 py-2.5 border border-slate-300 text-slate-600 rounded-xl hover:bg-slate-50 transition">
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- الجدول -->
+        <div class="lg:col-span-2">
+          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <!-- أدوات البحث والفلتر -->
+            <div class="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3">
+              <div class="relative flex-1">
+                <svg class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input type="text" id="searchInput" placeholder="ابحث بالاسم أو الرقم..." oninput="renderTable()"
+                       class="w-full pr-10 pl-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+              </div>
+              <select id="statusFilter" onchange="renderTable()" class="px-3 py-2.5 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="all">كل الحالات</option>
+                <option value="waiting">في الانتظار</option>
+                <option value="contacted">تم التواصل</option>
+                <option value="installed">تم التركيب</option>
+                <option value="cancelled">ملغي</option>
+              </select>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th class="text-right px-3 py-3 font-semibold">#</th>
+                    <th class="text-right px-3 py-3 font-semibold">الاسم</th>
+                    <th class="text-right px-3 py-3 font-semibold">التليفون</th>
+                    <th class="text-right px-3 py-3 font-semibold">المنطقة</th>
+                    <th class="text-right px-3 py-3 font-semibold">الباقة</th>
+                    <th class="text-right px-3 py-3 font-semibold">الحالة</th>
+                    <th class="text-right px-3 py-3 font-semibold">التواصل</th>
+                    <th class="text-right px-3 py-3 font-semibold">التاريخ</th>
+                    <th class="text-right px-3 py-3 font-semibold">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody" class="divide-y divide-slate-100">
+                  <!-- يتم ملؤه بالجافاسكريبت -->
+                </tbody>
+              </table>
+            </div>
+            <div id="emptyState" class="hidden py-16 text-center text-slate-400">
+              <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+              <p>مفيش طلبات لسه</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- مودال التفاصيل -->
+  <div id="detailModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md p-6 fade-in">
+      <div class="flex justify-between items-start mb-4">
+        <h3 class="font-bold text-lg text-slate-800">تفاصيل الطلب</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+      </div>
+      <div id="modalContent" class="space-y-3 text-sm"></div>
+      <div class="mt-5 flex gap-2">
+        <button onclick="closeModal()" class="flex-1 py-2.5 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 transition">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========== الإعدادات ==========
+    const PASSWORD = "net2026";           // غيّر كلمة المرور من هنا
+    const STORAGE_KEY = "net_waiting_list";
+
+    // ========== البيانات ==========
+    let entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+
+    // ========== تسجيل الدخول ==========
+    function login() {
+      const pass = document.getElementById("passwordInput").value;
+      if (pass === PASSWORD) {
+        document.getElementById("loginScreen").classList.add("hidden");
+        document.getElementById("app").classList.remove("hidden");
+        document.getElementById("loginError").classList.add("hidden");
+        renderTable();
+        updateStats();
+      } else {
+        document.getElementById("loginError").classList.remove("hidden");
+      }
+    }
+
+    function logout() {
+      document.getElementById("app").classList.add("hidden");
+      document.getElementById("loginScreen").classList.remove("hidden");
+      document.getElementById("passwordInput").value = "";
+    }
+
+    // ========== حفظ / تعديل ==========
+    function saveEntry(e) {
+      e.preventDefault();
+      const id = document.getElementById("editId").value;
+      const contactedBy = document.getElementById("contactedBy").value;
+      const data = {
+        id: id || Date.now().toString(),
+        name: document.getElementById("name").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        area: document.getElementById("area").value,
+        address: document.getElementById("address").value.trim(),
+        package: document.getElementById("package").value,
+        notes: document.getElementById("notes").value.trim(),
+        contactedBy: contactedBy,
+        status: id ? (entries.find(x => x.id === id)?.status || "waiting") : "waiting",
+        createdAt: id ? (entries.find(x => x.id === id)?.createdAt || new Date().toISOString()) : new Date().toISOString()
+      };
+
+      // لو اختار حد تواصل، نغير الحالة تلقائي لـ "تم التواصل" لو كانت انتظار
+      if (contactedBy && data.status === "waiting") {
+        data.status = "contacted";
+      }
+
+      if (id) {
+        const idx = entries.findIndex(x => x.id === id);
+        if (idx !== -1) entries[idx] = data;
+      } else {
+        entries.unshift(data);
+      }
+
+      saveToStorage();
+      resetForm();
+      renderTable();
+      updateStats();
+    }
+
+    function resetForm() {
+      document.getElementById("entryForm").reset();
+      document.getElementById("editId").value = "";
+      document.getElementById("formTitle").textContent = "إضافة عميل جديد";
+      document.getElementById("cancelEditBtn").classList.add("hidden");
+    }
+
+    function cancelEdit() {
+      resetForm();
+    }
+
+    // ========== عرض الجدول ==========
+    function renderTable() {
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      const statusFilter = document.getElementById("statusFilter").value;
+
+      let filtered = entries.filter(e => {
+        const matchSearch = !search || 
+          e.name.toLowerCase().includes(search) || 
+          e.phone.includes(search) ||
+          e.area.includes(search);
+        const matchStatus = statusFilter === "all" || e.status === statusFilter;
+        return matchSearch && matchStatus;
+      });
+
+      const tbody = document.getElementById("tableBody");
+      const empty = document.getElementById("emptyState");
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = "";
+        empty.classList.remove("hidden");
+        return;
+      }
+      empty.classList.add("hidden");
+
+      tbody.innerHTML = filtered.map((e, i) => `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-3 py-3 text-slate-500 text-xs">${i + 1}</td>
+          <td class="px-3 py-3 font-medium text-slate-800 text-sm">${escapeHtml(e.name)}</td>
+          <td class="px-3 py-3">
+            <a href="tel:${e.phone}" class="text-blue-600 hover:underline dir-ltr inline-block text-sm">${e.phone}</a>
+          </td>
+          <td class="px-3 py-3 text-slate-600 text-xs">${escapeHtml(e.area)}</td>
+          <td class="px-3 py-3 text-slate-600 text-xs max-w-[140px]">${e.package ? escapeHtml(e.package) : '—'}</td>
+          <td class="px-3 py-3">
+            <select onchange="changeStatus('${e.id}', this.value)" class="text-xs font-medium px-2 py-1 rounded-lg border-0 ${statusClass(e.status)}">
+              <option value="waiting" ${e.status==='waiting'?'selected':''}>انتظار</option>
+              <option value="contacted" ${e.status==='contacted'?'selected':''}>تم التواصل</option>
+              <option value="installed" ${e.status==='installed'?'selected':''}>تم التركيب</option>
+              <option value="cancelled" ${e.status==='cancelled'?'selected':''}>ملغي</option>
+            </select>
+          </td>
+          <td class="px-3 py-3 text-slate-600 text-xs">${e.contactedBy ? escapeHtml(e.contactedBy) : '<span class="text-slate-400">—</span>'}</td>
+          <td class="px-3 py-3 text-slate-500 text-xs">${formatDate(e.createdAt)}</td>
+          <td class="px-3 py-3">
+            <div class="flex gap-1">
+              <button onclick="showDetails('${e.id}')" class="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg" title="تفاصيل">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              </button>
+              <button onclick="editEntry('${e.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="تعديل">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              </button>
+              <button onclick="deleteEntry('${e.id}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="حذف">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function statusClass(status) {
+      const map = {
+        waiting: "bg-amber-100 text-amber-800",
+        contacted: "bg-blue-100 text-blue-800",
+        installed: "bg-emerald-100 text-emerald-800",
+        cancelled: "bg-slate-100 text-slate-600"
+      };
+      return map[status] || "";
+    }
+
+    function statusLabel(status) {
+      const map = {
+        waiting: "في الانتظار",
+        contacted: "تم التواصل",
+        installed: "تم التركيب",
+        cancelled: "ملغي"
+      };
+      return map[status] || status;
+    }
+
+    // ========== تغيير الحالة ==========
+    function changeStatus(id, status) {
+      const entry = entries.find(e => e.id === id);
+      if (entry) {
+        entry.status = status;
+        saveToStorage();
+        updateStats();
+        renderTable();
+      }
+    }
+
+    // ========== تعديل ==========
+    function editEntry(id) {
+      const e = entries.find(x => x.id === id);
+      if (!e) return;
+      document.getElementById("editId").value = e.id;
+      document.getElementById("name").value = e.name;
+      document.getElementById("phone").value = e.phone;
+      document.getElementById("area").value = e.area;
+      document.getElementById("address").value = e.address;
+      document.getElementById("package").value = e.package || "";
+      document.getElementById("notes").value = e.notes || "";
+      document.getElementById("contactedBy").value = e.contactedBy || "";
+      document.getElementById("formTitle").textContent = "تعديل بيانات العميل";
+      document.getElementById("cancelEditBtn").classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    // ========== حذف ==========
+    function deleteEntry(id) {
+      if (!confirm("هل أنت متأكد من حذف هذا الطلب؟")) return;
+      entries = entries.filter(e => e.id !== id);
+      saveToStorage();
+      renderTable();
+      updateStats();
+    }
+
+    // ========== التفاصيل ==========
+    function showDetails(id) {
+      const e = entries.find(x => x.id === id);
+      if (!e) return;
+      document.getElementById("modalContent").innerHTML = `
+        <div class="grid grid-cols-3 gap-1">
+          <span class="text-slate-500">الاسم:</span>
+          <span class="col-span-2 font-medium">${escapeHtml(e.name)}</span>
+          
+          <span class="text-slate-500">التليفون:</span>
+          <span class="col-span-2"><a href="tel:${e.phone}" class="text-blue-600">${e.phone}</a></span>
+          
+          <span class="text-slate-500">المنطقة:</span>
+          <span class="col-span-2">${escapeHtml(e.area)}</span>
+          
+          <span class="text-slate-500">العنوان:</span>
+          <span class="col-span-2">${escapeHtml(e.address)}</span>
+          
+          <span class="text-slate-500">الباقة:</span>
+          <span class="col-span-2 font-medium text-blue-700">${e.package ? escapeHtml(e.package) : '—'}</span>
+          
+          <span class="text-slate-500">الحالة:</span>
+          <span class="col-span-2"><span class="px-2 py-0.5 rounded text-xs font-medium ${statusClass(e.status)}">${statusLabel(e.status)}</span></span>
+          
+          <span class="text-slate-500">التواصل بواسطة:</span>
+          <span class="col-span-2">${e.contactedBy ? escapeHtml(e.contactedBy) : '<span class="text-slate-400">لم يتم التواصل بعد</span>'}</span>
+          
+          <span class="text-slate-500">التاريخ:</span>
+          <span class="col-span-2">${formatDate(e.createdAt)}</span>
+          
+          ${e.notes ? `<span class="text-slate-500">ملاحظات:</span><span class="col-span-2">${escapeHtml(e.notes)}</span>` : ""}
+        </div>
+      `;
+      document.getElementById("detailModal").classList.remove("hidden");
+    }
+
+    function closeModal() {
+      document.getElementById("detailModal").classList.add("hidden");
+    }
+
+    // ========== الإحصائيات ==========
+    function updateStats() {
+      document.getElementById("statTotal").textContent = entries.length;
+      document.getElementById("statWaiting").textContent = entries.filter(e => e.status === "waiting").length;
+      document.getElementById("statContacted").textContent = entries.filter(e => e.status === "contacted").length;
+      document.getElementById("statInstalled").textContent = entries.filter(e => e.status === "installed").length;
+    }
+
+    // ========== تصدير CSV ==========
+    function exportCSV() {
+      if (entries.length === 0) {
+        alert("مفيش بيانات للتصدير");
+        return;
+      }
+      const headers = ["الاسم", "التليفون", "المنطقة", "العنوان", "الباقة", "الحالة", "التواصل بواسطة", "الملاحظات", "تاريخ التسجيل"];
+      const rows = entries.map(e => [
+        e.name,
+        e.phone,
+        e.area,
+        e.address,
+        e.package || "",
+        statusLabel(e.status),
+        e.contactedBy || "لم يتم التواصل",
+        e.notes || "",
+        formatDate(e.createdAt)
+      ]);
+      let csv = "\uFEFF" + headers.join(",") + "\n";
+      rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",") + "\n";
+      });
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `قائمة_انتظار_التركيبات_${new Date().toISOString().slice(0,10)}.csv`;
+      link.click();
+    }
+
+    // ========== أدوات مساعدة ==========
+    function saveToStorage() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    }
+
+    function formatDate(iso) {
+      const d = new Date(iso);
+      return d.toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // إغلاق المودال بالضغط برا
+    document.getElementById("detailModal")?.addEventListener("click", function(e) {
+      if (e.target === this) closeModal();
+    });
+  </script>
+</body>
+</html>
